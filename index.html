@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>省道事故列表</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 1200px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            text-align: center;
+        }
+        .accident {
+            border-bottom: 1px solid #ddd;
+            padding: 10px 0;
+        }
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        select, input {
+            padding: 5px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+        .buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .btn {
+            flex: 1;
+            padding: 8px;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+            text-align: center;
+        }
+        .map-btn {
+            background-color: #28a745;
+            color: white;
+        }
+        .image-btn {
+            background-color: #6c757d;
+            color: white;
+        }
+        #map {
+            height: 400px;
+            width: 100%;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body><div class="container">
+    <div class="controls">
+        <div>
+            <label for="origin">出發地:</label>
+            <input type="text" id="origin" placeholder="輸入出發地">
+        </div>
+        <div>
+            <label for="destination">目的地:</label>
+            <input type="text" id="destination" placeholder="輸入目的地">
+        </div>
+        <button class="btn" style="background-color: #007bff; color: white;" onclick="calculateRoute()">計算路線</button>
+    </div>
+
+    <div id="map"></div>
+    <h1>事故清單</h1>
+    <div id="accident-list">載入中...</div>
+</div>
+
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA6_KhyYCvjVxazjsHEJpU3q0ZV3nLJuBQ&libraries=places"></script>
+<script>
+    let map;
+    let directionsService;
+    let directionsRenderer;
+    let accidentData = [];
+    
+    function initMap() {
+        map = new google.maps.Map(document.getElementById('map'), {
+            zoom: 8,
+            center: { lat: 23.5, lng: 121 }
+        });
+        directionsService = new google.maps.DirectionsService();
+        directionsRenderer = new google.maps.DirectionsRenderer();
+        directionsRenderer.setMap(map);
+    
+        new google.maps.places.Autocomplete(document.getElementById('origin'));
+        new google.maps.places.Autocomplete(document.getElementById('destination'));
+    }
+    
+    function displayAccidents(accidents) {
+        const list = document.getElementById("accident-list");
+        list.innerHTML = "";
+
+        if (accidents.length === 0) {
+            list.innerHTML = "沒有符合條件的事故。";
+            return;
+        }
+
+        accidents.forEach(acc => {
+            const div = document.createElement("div");
+            div.classList.add("accident");
+            div.innerHTML = `
+                <p><strong>${acc.road}</strong></p>
+                <div class="buttons">
+                    <button class="btn map-btn" onclick="openMap(${acc.lat}, ${acc.lon})">事故地點</button>
+                    <button class="btn image-btn" onclick="openImage('${acc.link}')">即時影像</button>
+                </div>
+            `;
+            list.appendChild(div);
+        });
+    }
+    
+    function openMap(lat, lon) {
+        window.open(`https://www.google.com/maps?q=${lat},${lon}`, "_blank");
+    }
+    
+    function openImage(link) {
+        window.open(link, "_blank");
+    }
+    
+    function calculateRoute() {
+        const origin = document.getElementById('origin').value;
+        const destination = document.getElementById('destination').value;
+    
+        if (!origin || !destination) {
+            alert('請輸入出發地和目的地');
+            return;
+        }
+    
+        directionsService.route({
+            origin: origin,
+            destination: destination,
+            travelMode: google.maps.TravelMode.DRIVING
+        }, (response, status) => {
+            if (status === 'OK') {
+                directionsRenderer.setDirections(response);
+                filterAccidentsAlongRoute(response);
+            } else {
+                alert('無法計算路線: ' + status);
+            }
+        });
+    }
+    
+    function filterAccidentsAlongRoute(response) {
+        const route = response.routes[0].overview_path;
+        const filteredAccidents = [];
+    
+        accidentData.forEach(acc => {
+            const accidentPoint = new google.maps.LatLng(acc.緯度, acc.經度);
+            
+            for (let i = 0; i < route.length; i++) {
+                const distance = google.maps.geometry.spherical.computeDistanceBetween(
+                    accidentPoint,
+                    route[i]
+                );
+                
+                if (distance <= 500) {
+                    filteredAccidents.push(acc);
+                    break;
+                }
+            }
+        });
+    
+        displayAccidents(filteredAccidents);
+    }
+    
+    window.onload = () => {
+        initMap();
+        Promise.all([
+    fetch('data.json').then(res => res.json()),
+    fetch('accident_distances.json').then(res => res.json())
+])
+.then(([infoData, distanceData]) => {
+    // 將兩組資料合併
+    const distanceMap = {};
+    distanceData.forEach(entry => {
+        distanceMap[entry.name] = entry.distance;
+    });
+
+    // 合併並格式化顯示用資料
+    accidentData = infoData
+        .filter(entry => distanceMap[entry["檔案名稱"]])  // 只保留有距離的
+        .map(entry => {
+            const distanceText = distanceMap[entry["檔案名稱"]];
+            const cctv = entry["CCTV位置"].replace("K+", ".").replace(/[^\d.]/g, "");
+            const baseKm = parseFloat(cctv);
+            let startKm = baseKm, endKm = baseKm;
+
+            try {
+                const [start, end] = distanceText.replace("m", "").split("-").map(m => parseInt(m));
+                startKm = (baseKm + start / 1000).toFixed(2);
+                endKm = (baseKm + end / 1000).toFixed(2);
+            } catch {}
+
+            return {
+                name: entry["檔案名稱"],
+                road: `${entry["道路名稱"]} ${startKm}公里至${endKm}公里處`,
+                lat: entry["緯度"],
+                lon: entry["經度"],
+                link: entry["CCTV連結"],
+                region: entry["地區"] || ""
+            };
+        });
+
+    displayAccidents(accidentData);
+})
+.catch(error => {
+    console.error('載入資料失敗:', error);
+    document.getElementById("accident-list").innerHTML = `無法載入事故資料: ${error.message}`;
+});
+    };
+</script>
+</body>
+</html>
