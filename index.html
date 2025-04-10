@@ -7,19 +7,24 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            margin: 20px;
+            margin: 0;
+            padding: 10px;
             background-color: #f4f4f4;
         }
         .container {
             max-width: 1200px;
-            margin: auto;
+            width: 100%;
+            margin: 0 auto;
             background: white;
-            padding: 20px;
+            padding: 15px;
             border-radius: 10px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            box-sizing: border-box;
         }
         h1 {
             text-align: center;
+            font-size: 1.8em;
+            margin: 10px 0;
         }
         .accident {
             border-bottom: 1px solid #ddd;
@@ -30,16 +35,25 @@
             flex-wrap: wrap;
             gap: 10px;
             margin-bottom: 15px;
+            justify-content: space-between;
+        }
+        .controls > div {
+            flex: 1 1 100%;
+            min-width: 0;
         }
         select, input {
-            padding: 5px;
+            width: 100%;
+            padding: 8px;
             border-radius: 5px;
             border: 1px solid #ccc;
+            box-sizing: border-box;
+            font-size: 1em;
         }
         .buttons {
             display: flex;
             gap: 10px;
             margin-top: 10px;
+            flex-wrap: wrap;
         }
         .btn {
             flex: 1;
@@ -48,6 +62,8 @@
             cursor: pointer;
             border-radius: 5px;
             text-align: center;
+            font-size: 0.9em;
+            min-width: 100px;
         }
         .map-btn {
             background-color: #28a745;
@@ -60,11 +76,60 @@
         #map {
             height: 400px;
             width: 100%;
-            margin: 20px 0;
+            margin: 15px 0;
+            border-radius: 5px;
+        }
+
+        /* 響應式設計：平板（768px 以下） */
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            h1 {
+                font-size: 1.5em;
+            }
+            .controls {
+                flex-direction: column;
+                gap: 8px;
+            }
+            .btn {
+                font-size: 0.85em;
+                padding: 6px;
+            }
+            #map {
+                height: 300px;
+            }
+        }
+
+        /* 響應式設計：手機（480px 以下） */
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 1.2em;
+            }
+            .controls > div {
+                margin-bottom: 5px;
+            }
+            select, input {
+                padding: 6px;
+                font-size: 0.9em;
+            }
+            .buttons {
+                flex-direction: column;
+                gap: 5px;
+            }
+            .btn {
+                width: 100%;
+                min-width: 0;
+                font-size: 0.8em;
+            }
+            #map {
+                height: 200px;
+            }
         }
     </style>
 </head>
-<body><div class="container">
+<body>
+<div class="container">
     <div class="controls">
         <div>
             <label for="origin">出發地:</label>
@@ -182,47 +247,51 @@
     window.onload = () => {
         initMap();
         Promise.all([
-    fetch('data.json').then(res => res.json()),
-    fetch('accident_distances.json').then(res => res.json())
-])
-.then(([infoData, distanceData]) => {
-    // 將兩組資料合併
-    const distanceMap = {};
-    distanceData.forEach(entry => {
-        distanceMap[entry.name] = entry.distance;
-    });
+            fetch('data.json').then(res => {
+                if (!res.ok) throw new Error(`無法載入 data.json，狀態碼: ${res.status}`);
+                return res.json();
+            }),
+            fetch('accident_distances.json').then(res => {
+                if (!res.ok) throw new Error(`無法載入 accident_distances.json，狀態碼: ${res.status}`);
+                return res.json();
+            })
+        ])
+        .then(([infoData, distanceData]) => {
+            const distanceMap = {};
+            distanceData.forEach(entry => {
+                distanceMap[entry.name] = entry.distance;
+            });
 
-    // 合併並格式化顯示用資料
-    accidentData = infoData
-        .filter(entry => distanceMap[entry["檔案名稱"]])  // 只保留有距離的
-        .map(entry => {
-            const distanceText = distanceMap[entry["檔案名稱"]];
-            const cctv = entry["CCTV位置"].replace("K+", ".").replace(/[^\d.]/g, "");
-            const baseKm = parseFloat(cctv);
-            let startKm = baseKm, endKm = baseKm;
+            accidentData = infoData
+                .filter(entry => distanceMap[entry["檔案名稱"]])
+                .map(entry => {
+                    const distanceText = distanceMap[entry["檔案名稱"]];
+                    const cctv = entry["CCTV位置"].replace("K+", ".").replace(/[^\d.]/g, "");
+                    const baseKm = parseFloat(cctv);
+                    let startKm = baseKm, endKm = baseKm;
 
-            try {
-                const [start, end] = distanceText.replace("m", "").split("-").map(m => parseInt(m));
-                startKm = (baseKm + start / 1000).toFixed(2);
-                endKm = (baseKm + end / 1000).toFixed(2);
-            } catch {}
+                    try {
+                        const [start, end] = distanceText.replace("m", "").split("-").map(m => parseInt(m));
+                        startKm = (baseKm + start / 1000).toFixed(2);
+                        endKm = (baseKm + end / 1000).toFixed(2);
+                    } catch {}
 
-            return {
-                name: entry["檔案名稱"],
-                road: `${entry["道路名稱"]} ${startKm}公里至${endKm}公里處`,
-                lat: entry["緯度"],
-                lon: entry["經度"],
-                link: entry["CCTV連結"],
-                region: entry["地區"] || ""
-            };
+                    return {
+                        name: entry["檔案名稱"],
+                        road: `${entry["道路名稱"]} ${startKm}公里至${endKm}公里處`,
+                        lat: entry["緯度"],
+                        lon: entry["經度"],
+                        link: entry["CCTV連結"],
+                        region: entry["地區"] || ""
+                    };
+                });
+
+            displayAccidents(accidentData);
+        })
+        .catch(error => {
+            console.error('載入資料失敗:', error);
+            document.getElementById("accident-list").innerHTML = `無法載入事故資料: ${error.message}`;
         });
-
-    displayAccidents(accidentData);
-})
-.catch(error => {
-    console.error('載入資料失敗:', error);
-    document.getElementById("accident-list").innerHTML = `無法載入事故資料: ${error.message}`;
-});
     };
 </script>
 </body>
