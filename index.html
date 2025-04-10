@@ -147,7 +147,7 @@
     <div id="accident-list">載入中...</div>
 </div>
 
-<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA6_KhyYCvjVxazjsHEJpU3q0ZV3nLJuBQ&libraries=places"></script>
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA6_KhyYCvjVxazjsHEJpU3q0ZV3nLJuBQ&libraries=places,geometry"></script>
 <script>
     let map;
     let directionsService;
@@ -223,26 +223,25 @@
     
     function filterAccidentsAlongRoute(response) {
         const route = response.routes[0].overview_path;
+        const path = new google.maps.Polyline({ path: route });  // 建立 polyline 路徑
         const filteredAccidents = [];
-    
+
         accidentData.forEach(acc => {
-            const accidentPoint = new google.maps.LatLng(acc.緯度, acc.經度);
-            
-            for (let i = 0; i < route.length; i++) {
-                const distance = google.maps.geometry.spherical.computeDistanceBetween(
-                    accidentPoint,
-                    route[i]
-                );
-                
-                if (distance <= 500) {
-                    filteredAccidents.push(acc);
-                    break;
-                }
+            const accidentPoint = new google.maps.LatLng(acc.lat, acc.lon);
+
+            // 使用 isLocationOnEdge 判斷事故點是否在線路附近（500m 容差）
+            const isNear = google.maps.geometry.poly.isLocationOnEdge(
+                accidentPoint, path, 0.005  // 0.005 度 ≈ 500 公尺
+            );
+
+            if (isNear) {
+                filteredAccidents.push(acc);
             }
         });
-    
+
         displayAccidents(filteredAccidents);
     }
+
     
     window.onload = () => {
         initMap();
