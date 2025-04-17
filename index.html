@@ -130,6 +130,25 @@
 </head>
 <body>
 <div class="container">
+    <details style="background-color: #f1f1f1; border: 1px solid #ccc; padding: 12px; border-radius: 5px; margin-bottom: 15px;">
+        <summary style="font-weight: bold; font-size: 1.1em; cursor: pointer;">🔎 使用說明（點此展開）</summary>
+        <div style="margin-top: 10px;">
+          <p>本系統旨在輔助用路人了解省道沿線近期事故發生地點與即時影像位置，提供行前路況參考。</p>
+          <ol style="padding-left: 20px; margin-top: 5px;">
+            <li>輸入您的「出發地」與「目的地」，點選 <strong>「計算路線」</strong>。</li>
+            <li>系統會自動比對事故資料，篩選出 <strong>路線上</strong> 的事故地點。</li>
+            <li>下方會列出事故列表，您可以點選 <strong>「事故地點」</strong> 查看地圖位置，或點選 <strong>「即時影像」</strong> 查看現場畫面。</li>
+          </ol>
+          <p style="margin-top: 10px;">
+            📍<strong>範例路線1：</strong>您可以輸入「左營高鐵站」作為出發地，「池上火車站」作為目的地，系統將顯示 1 筆事故地點。
+          </p>
+          <p style="margin-top: 10px;">
+            📍<strong>範例路線2：</strong>您可以輸入「大溪老街」作為出發地，「石門洞」作為目的地，系統將顯示 2 筆事故地點。
+          </p>
+          <p> 以上操作流程提供參考</p>
+          <p style="margin-top: 10px;"><strong>資料來源：</strong>交通部公路總局 CCTV 資料 + 本系統整合事故影像辨識距離分析。</p>
+        </div>
+      </details>
     <div class="controls">
         <div>
             <label for="origin">出發地:</label>
@@ -153,6 +172,7 @@
     let directionsService;
     let directionsRenderer;
     let accidentData = [];
+    let accidentMarkers = []; 
     
     function initMap() {
         map = new google.maps.Map(document.getElementById('map'), {
@@ -171,12 +191,17 @@
         const list = document.getElementById("accident-list");
         list.innerHTML = "";
 
+        // 移除原有的事故圖示
+        accidentMarkers.forEach(marker => marker.setMap(null));
+        accidentMarkers = [];
+
         if (accidents.length === 0) {
             list.innerHTML = "沒有符合條件的事故。";
             return;
         }
 
         accidents.forEach(acc => {
+            // 加入清單
             const div = document.createElement("div");
             div.classList.add("accident");
             div.innerHTML = `
@@ -187,6 +212,18 @@
                 </div>
             `;
             list.appendChild(div);
+
+            // 在地圖上標註事故地點
+            const marker = new google.maps.Marker({
+                position: { lat: acc.lat, lng: acc.lon },
+                map: map,
+                title: acc.road,
+                icon: {
+                    url: "warning.png",
+                    scaledSize: new google.maps.Size(24, 24)  // 調整圖示大小
+                }
+            });
+            accidentMarkers.push(marker);
         });
     }
     
