@@ -126,6 +126,37 @@
                 height: 200px;
             }
         }
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            background: rgba(0, 0, 0, 0.6);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 600px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+            position: relative;
+            text-align: left;
+            font-size: 1em;
+        }
+
+        .close-button {
+            position: absolute;
+            top: 8px;
+            right: 15px;
+            font-size: 24px;
+            cursor: pointer;
+        }
+
     </style>
 </head>
 <body>
@@ -137,18 +168,27 @@
           <ol style="padding-left: 20px; margin-top: 5px;">
             <li>輸入您的「出發地」與「目的地」，點選 <strong>「計算路線」</strong>。</li>
             <li>系統會自動比對事故資料，篩選出 <strong>路線上</strong> 的事故地點。</li>
-            <li>下方會列出事故列表，您可以點選 <strong>「事故地點」</strong> 查看地圖位置，或點選 <strong>「即時影像」</strong> 查看現場畫面。</li>
+            <li>下方會列出事故列表，您可以點選 <strong>「事故地點」</strong>(假設) 查看地圖位置，或點選 <strong>「CCTV即時畫面」</strong> 查看現場畫面。</li>
           </ol>
           <p style="margin-top: 10px;">
-            📍<strong>範例路線1：</strong>您可以輸入「左營高鐵站」作為出發地，「池上火車站」作為目的地，系統將顯示 1 筆事故地點。
+            📍<strong>範例路線1：</strong>您可以輸入「左營高鐵站」作為出發地，「池上火車站」作為目的地，系統將顯示 2 筆事故地點。
           </p>
           <p style="margin-top: 10px;">
-            📍<strong>範例路線2：</strong>您可以輸入「大溪老街」作為出發地，「石門洞」作為目的地，系統將顯示 2 筆事故地點。
+            📍<strong>範例路線2：</strong>您可以輸入「大溪老街」作為出發地，「淡水」作為目的地，系統將顯示 1 筆事故地點。
           </p>
           <p> 以上操作流程提供參考</p>
           <p style="margin-top: 10px;"><strong>資料來源：</strong>交通部公路總局 CCTV 資料 + 本系統整合事故影像辨識距離分析。</p>
         </div>
       </details>
+    <div id="modal" class="modal-overlay">
+        <div class="modal-content">
+          <span class="close-button" onclick="closeModal()">×</span>
+          <h2>🚧 系統使用提醒</h2>
+          <p>目前因缺乏可用的實際事故影像資料集，為避免系統測試期間影響整體呈現效果，系統中的事故資訊皆為<strong>模擬資料</strong>，並非實際發生事故之位置。</p>
+          <p>您點擊「CCTV即時畫面」所看到的是該路段現場之 <strong>即時監視畫面</strong>，並非事故發生當下影像。此功能設計目的是讓使用者可參考當下路況，並為未來實際應用做準備。</p>
+          <button onclick="closeModal()" style="margin-top: 15px;">我了解了，進入系統</button>
+        </div>
+    </div>
     <div class="controls">
         <div>
             <label for="origin">出發地:</label>
@@ -208,7 +248,7 @@
                 <p><strong>${acc.road}</strong></p>
                 <div class="buttons">
                     <button class="btn map-btn" onclick="openMap(${acc.lat}, ${acc.lon})">事故地點</button>
-                    <button class="btn image-btn" onclick="openImage('${acc.link}')">即時影像</button>
+                    <button class="btn image-btn" onclick="openImage('${acc.link}')">CCTV即時畫面</button>
                 </div>
             `;
             list.appendChild(div);
@@ -277,6 +317,10 @@
         });
 
         displayAccidents(filteredAccidents);
+    }
+
+    function closeModal() {
+        document.getElementById("modal").style.display = "none";
     }
 
     
