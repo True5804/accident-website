@@ -343,28 +343,39 @@
             });
 
             accidentData = infoData
-                .filter(entry => distanceMap[entry["檔案名稱"]])
-                .map(entry => {
-                    const distanceText = distanceMap[entry["檔案名稱"]];
-                    const cctv = entry["CCTV位置"].replace("K+", ".").replace(/[^\d.]/g, "");
-                    const baseKm = parseFloat(cctv);
-                    let startKm = baseKm, endKm = baseKm;
+            .filter(entry => distanceMap[entry["檔案名稱"]])
+            .map(entry => {
+                const distanceText = distanceMap[entry["檔案名稱"]];
+                
+                // 解析 CCTV 基準里程，如 "58K+965" -> 58.965km
+                const cctv = entry["CCTV位置"].replace("K+", ".").replace(/[^\d.]/g, "");
+                const baseKm = parseFloat(cctv);
+                
+                // 新版距離格式為「xx.xm」，換算成公里並加到基準里程上
+                let exactKm = baseKm;
+                try {
+                    const meters = parseFloat(distanceText.replace("m", ""));
+                    exactKm = (baseKm + meters / 1000).toFixed(1);  // 一位小數
+                } catch {}
 
-                    try {
-                        const [start, end] = distanceText.replace("m", "").split("-").map(m => parseInt(m));
-                        startKm = (baseKm + start / 1000).toFixed(2);
-                        endKm = (baseKm + end / 1000).toFixed(2);
-                    } catch {}
+                // 路名調整成「台17公路」格式
+                const rawRoadName = (entry["道路名稱"] || "").trim();
+                const roadName = rawRoadName.replace("線");
 
-                    return {
-                        name: entry["檔案名稱"],
-                        road: `${entry["道路名稱"]} ${startKm}公里至${endKm}公里處`,
-                        lat: entry["緯度"],
-                        lon: entry["經度"],
-                        link: entry["CCTV連結"],
-                        region: entry["地區"] || ""
-                    };
-                });
+                // 方向欄位（如：南下車道 / 北上車道 / 東行車道 / 西行車道）
+                const direction = entry["方向"] || "";
+
+                return {
+                    name: entry["檔案名稱"],
+                    // 顯示格式：「台17公路南下車道123.4 KM」
+                    road: `${roadName}${direction}${exactKm} KM`,
+                    lat: entry["緯度"],
+                    lon: entry["經度"],
+                    link: entry["CCTV連結"],
+                    region: entry["地區"] || ""
+                };
+            });
+
 
             displayAccidents(accidentData);
         })
