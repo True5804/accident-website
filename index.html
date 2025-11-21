@@ -360,7 +360,7 @@
 
                 // 路名調整成「台17公路」格式
                 const rawRoadName = (entry["道路名稱"] || "").trim();
-                const roadName = rawRoadName.replace("線");
+                const roadName = rawRoadName.replace("線", "公路");
 
                 // 方向欄位（如：南下車道 / 北上車道 / 東行車道 / 西行車道）
                 const direction = entry["方向"] || "";
